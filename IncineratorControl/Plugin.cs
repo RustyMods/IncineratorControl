@@ -15,7 +15,7 @@ namespace IncineratorControl
     public class IncineratorControlPlugin : BaseUnityPlugin
     {
         internal const string ModName = "IncineratorControl";
-        internal const string ModVersion = "1.0.0";
+        internal const string ModVersion = "1.0.1";
         internal const string Author = "RustyMods";
         private const string ModGUID = Author + "." + ModName;
         private static string ConfigFileName = ModGUID + ".cfg";
@@ -25,10 +25,16 @@ namespace IncineratorControl
         public static readonly ManualLogSource IncineratorControlLogger = BepInEx.Logging.Logger.CreateLogSource(ModName);
         public static readonly ConfigSync ConfigSync = new(ModGUID) { DisplayName = ModName, CurrentVersion = ModVersion, MinimumRequiredVersion = ModVersion };
         public enum Toggle { On = 1, Off = 0 }
-
+        private static ConfigEntry<Toggle> _serverConfigLocked = null!;
+        private static ConfigEntry<Toggle> _recycle = null!;
+        private static ConfigEntry<float> _recycleModifier = null!;
+        private static ConfigEntry<Toggle> _recycleUnknown = null!;
+        public static bool Recycle() => _recycle.Value is Toggle.On;
+        public static float GetRecycleRate() => _recycleModifier.Value;
+        public static bool ReturnUnknown() => _recycleUnknown.Value is Toggle.On;
         public void Awake()
         {
-            // InitConfigs();
+            InitConfigs();
             Assembly assembly = Assembly.GetExecutingAssembly();
             _harmony.PatchAll(assembly);
             SetupWatcher();
@@ -42,12 +48,14 @@ namespace IncineratorControl
             _serverConfigLocked = config("1 - General", "Lock Configuration", Toggle.On,
                 "If on, the configuration is locked and can be changed by server admins only.");
             _ = ConfigSync.AddLockingConfigEntry(_serverConfigLocked);
+            _recycle = config("Recycle", "Enabled", Toggle.Off, "If on, incinerator recycles instead of converts");
+            _recycleModifier = config("Recycle", "Rate", 1f,
+                new ConfigDescription("Set percentage of returned resources for item",
+                    new AcceptableValueRange<float>(0f, 1f)));
+            _recycleUnknown = config("Recycle", "Unknown", Toggle.On, "Return unknown recipe materials");
         }
 
-        private void OnDestroy()
-        {
-            Config.Save();
-        }
+        private void OnDestroy() => Config.Save();
 
         private void SetupWatcher()
         {
@@ -74,10 +82,6 @@ namespace IncineratorControl
                 IncineratorControlLogger.LogError("Please check your config entries for spelling and format!");
             }
         }
-
-        #region ConfigOptions
-
-        private static ConfigEntry<Toggle> _serverConfigLocked = null!;
 
         private ConfigEntry<T> config<T>(string group, string name, T value, ConfigDescription description,
             bool synchronizedSetting = true)
@@ -109,7 +113,5 @@ namespace IncineratorControl
             [UsedImplicitly] public string? Category;
             [UsedImplicitly] public Action<ConfigEntryBase>? CustomDrawer;
         }
-
-        #endregion
     }
 }

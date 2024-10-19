@@ -24,17 +24,25 @@ public static class IncineratorManager
         {
             if (!__instance) return;
             WriteDefaultData(__instance);
+            var incinerator = __instance.GetPrefab("incinerator");
+            incinerator.AddComponent<Recycle>();
         }
     }
 
     [HarmonyPatch(typeof(Incinerator), nameof(Incinerator.OnIncinerate))]
     private static class Incinerator_OnIncinerate_Prefix
     {
-        private static void Prefix(Incinerator __instance)
+        private static bool Prefix(Incinerator __instance, ref bool __result)
         {
-            if (!__instance) return;
-            if (__instance.name.Replace("(Clone)", string.Empty) != "incinerator") return;
+            if (!__instance) return true;
+            if (!__instance.TryGetComponent(out Recycle component)) return true;
+            if (IncineratorControlPlugin.Recycle())
+            {
+                __result = component.OnRecycle();
+                return false;
+            }
             UpdateIncinerator(__instance);
+            return true;
         }
     }
 
@@ -78,6 +86,7 @@ public static class IncineratorManager
 
     public static void SetupWatcher()
     {
+        if (!Directory.Exists(m_folderPath)) Directory.CreateDirectory(m_folderPath);
         FileSystemWatcher watcher = new FileSystemWatcher(m_folderPath, "*.yml");
         watcher.EnableRaisingEvents = true;
         watcher.IncludeSubdirectories = true;

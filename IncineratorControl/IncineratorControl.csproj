@@ -112,6 +112,7 @@
     </ItemGroup>
     <ItemGroup>
         <Compile Include="Managers\IncineratorManager.cs" />
+        <Compile Include="Managers\Recycle.cs" />
         <Compile Include="Plugin.cs" />
         <Compile Include="Properties\AssemblyInfo.cs" />
         <Compile Include="VersionHandshake.cs" />
